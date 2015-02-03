@@ -1,9 +1,9 @@
-module Matrix : sig
+module type MATRIX = sig
   type t
   val make : int -> int -> t
   val init : int -> int -> (int -> int -> float) -> t
-  val make_random : int -> int -> t
-  val make_identity : int -> int -> t
+  val init_random : int -> int -> t
+  val init_identity : int -> int -> t
   val size : t -> int * int
   val reshape : t -> int -> int -> t
   val get : t -> int -> int -> float
@@ -22,17 +22,15 @@ module Matrix : sig
   val to_list : t -> float list
   val from_string : string -> t
   val to_string : t -> string
-end = struct
-  type t = { rows : int;
-             cols : int;
-             elts : float array
-           }
+end 
+module Matrix = struct
+  type t = { rows : int; cols : int; cells : float array }
 
   (* Note: column-major representation, 0-based representation *)
   let offset m r c = (pred c) * m.rows + (pred r)
 
-  let get m r c = m.elts.(offset m r c)
-  let set m r c v = m.elts.(offset m r c) <- v
+  let get m r c = m.cells.(offset m r c)
+  let set m r c v = m.cells.(offset m r c) <- v
   let size m = (m.rows,m.cols)
 
   let reshape m rows cols = failwith "not implemented"
@@ -45,11 +43,8 @@ end = struct
   let dot m n = failwith "not implemented"
   let inv m = failwith "not implemented"
 
-  let make_with_elts rows cols elts = { rows; cols; elts }
-
   let make rows cols = 
-    let elts = Array.make_float (rows*cols) in
-    make_with_elts rows cols elts
+    { rows; cols; cells = Array.make_float (rows*cols) }
 
   let init rows cols f =
     let m = make rows cols in
@@ -60,23 +55,17 @@ end = struct
     done; 
     m
 
-  let make_random rows cols =
-    let elts = Array.init (rows*cols) (fun _ -> Random.float 1.0) in
-    make_with_elts rows cols elts
+  let init_random rows cols =
+    init rows cols (fun _ _ -> Random.float 1.0)
 
-  let make_identity rows cols =
-    let m = make rows cols in
-    Array.fill m.elts 0 (rows*cols) 0.0;
-    for i = 1 to min rows cols do
-      set m i i 1.
-    done;
-    m
+  let init_identity rows cols =
+    init rows cols (fun i j -> if i = j then 1.0 else 0.0)
 
   let map f m =
     let rows = m.rows in
     let cols = m.cols in
-    let elts = Array.init (rows*cols) (fun i -> f m.elts.(i)) in
-    make_with_elts rows cols elts
+    let cells = Array.init (rows*cols) (fun i -> f m.cells.(i)) in
+    { rows; cols; cells }
 
   let fold_rows f m = failwith "not implemented"
   let fold_cols f m = failwith "not implemented"
@@ -86,10 +75,10 @@ end = struct
   let add m1 m2 =
     let rows = m1.rows in
     let cols = m1.cols in
-    let e1 = m1.elts in
-    let e2 = m2.elts in
-    let elts = Array.init (rows*cols) (fun i -> e1.(i) +. e2.(i)) in
-    make_with_elts rows cols elts
+    let e1 = m1.cells in
+    let e2 = m2.cells in
+    let cells = Array.init (rows*cols) (fun i -> e1.(i) +. e2.(i)) in
+    { rows; cols; cells }
 
   let mult m1 m2 =
     if m1.cols <> m2.rows then invalid_arg "m2" else
@@ -110,7 +99,40 @@ end = struct
       bprintf b "\n"
     done;
     Buffer.contents b
+
+  module Parser = struct
+    let rec parse s =
+      let b = Buffer.create 16 in
+      let row = ref [] in
+      let rows = ref [] in
+      String.iter 
+        begin function
+          | '\n' | '\t' | ' ' -> ()
+          | ';' -> 
+             let n = float_of_string (Buffer.contents b) in
+             Buffer.clear b;
+             row := n :: !row;
+             rows := (List.rev !row) :: !rows;
+             row := []
+          | ',' ->
+             let n = float_of_string (Buffer.contents b) in
+             Buffer.clear b;
+             row := n :: !row
+          | c -> Buffer.add_char b c
+        end s;
+      if Buffer.length b <> 0 then 
+        begin
+          let n = float_of_string (Buffer.contents b) in
+          row := n :: !row
+        end;
+      if List.length !row <> 0 then
+        begin
+          rows := !row :: !rows;
+        end;
+      List.rev !rows
+  end
     
-  let from_string m = failwith "not implemented"
+  let from_string s =
+    from_list (Parser.parse s)
       
 end
