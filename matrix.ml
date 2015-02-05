@@ -75,12 +75,20 @@ let add m1 m2 =
 
 let mult m1 m2 =
   if m1.cols <> m2.rows then invalid_arg "m2";
-  failwith "not implemented"
+  let p = m1.cols in
+  init m1.rows m2.cols 
+       begin fun i j -> 
+             let s = ref 0. in
+             for k = 1 to p do
+               s := !s +. (get m1 i k) *. (get m2 k j)
+             done;
+             !s
+       end
 
 let chain_mult ms =
   failwith "not implemented"
 
-let from_list l = 
+let from_list l =
   { rows = 1; cols = List.length l; cells = Array.of_list l }
 
 let to_list m =
