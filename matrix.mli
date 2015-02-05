@@ -13,6 +13,7 @@ val reshape : t -> int -> int -> t
 val transpose : t -> t
 val add : t -> t -> t
 val mult : t -> t -> t
+val chain_mult : t list -> t
 val neg : t -> t
 val dot : t -> t -> float
 val inv : t -> t

@@ -77,6 +77,9 @@ let mult m1 m2 =
   if m1.cols <> m2.rows then invalid_arg "m2";
   failwith "not implemented"
 
+let chain_mult ms =
+  failwith "not implemented"
+
 let from_list l = 
   { rows = 1; cols = List.length l; cells = Array.of_list l }
 
