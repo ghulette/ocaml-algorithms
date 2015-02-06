@@ -49,7 +49,15 @@ let reshape m rows cols =
 let transpose m = 
   init m.cols m.rows (fun i j -> get m j i)
 
-let dot m n = failwith "not implemented"
+let dot m n = 
+  if size m <> size n then invalid_arg "Matrix.dot";
+  init 1 m.cols (fun _ j -> 
+                 let sum = ref 0. in
+                 for i = 1 to m.rows do
+                   sum := !sum +. (get m i j) *. (get n i j)
+                 done;
+                 !sum)
+
 let inv m = failwith "not implemented"
 let eig m = failwith "not implemented"
 

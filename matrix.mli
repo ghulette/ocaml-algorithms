@@ -15,7 +15,7 @@ val add : t -> t -> t
 val mult : t -> t -> t
 val chain_mult : t list -> t
 val neg : t -> t
-val dot : t -> t -> float
+val dot : t -> t -> t
 val inv : t -> t
 val map : (float -> float) -> t -> t
 val map2 : (float -> float -> float) -> t -> t -> t
