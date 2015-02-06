@@ -12,11 +12,6 @@ let get m r c =
 let set m r c v = 
   m.cells.(offset m r c) <- v
 
-let transpose m = failwith "not implemented"
-let dot m n = failwith "not implemented"
-let inv m = failwith "not implemented"
-let eig m = failwith "not implemented"
-
 let make rows cols = 
   { rows; cols; cells = Array.make_float (rows*cols) }
 
@@ -51,6 +46,13 @@ let reshape m rows cols =
   if m.rows * m.cols <> rows * cols then invalid_arg "Matrix.reshape";
   { rows; cols; cells = m.cells }
 
+let transpose m = 
+  init m.cols m.rows (fun i j -> get m j i)
+
+let dot m n = failwith "not implemented"
+let inv m = failwith "not implemented"
+let eig m = failwith "not implemented"
+
 let map f m =
   let rows = m.rows in
   let cols = m.cols in
@@ -76,13 +78,14 @@ let add m1 m2 =
 let mult m1 m2 =
   if m1.cols <> m2.rows then invalid_arg "m2";
   let p = m1.cols in
-  init m1.rows m2.cols 
-       begin fun i j -> 
-             let s = ref 0. in
-             for k = 1 to p do
-               s := !s +. (get m1 i k) *. (get m2 k j)
-             done;
-             !s
+  init m1.rows m2.cols
+       begin 
+         fun i j -> 
+         let s = ref 0. in
+         for k = 1 to p do
+           s := !s +. (get m1 i k) *. (get m2 k j)
+         done;
+         !s
        end
 
 let chain_mult ms =

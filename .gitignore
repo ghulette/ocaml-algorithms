@@ -1,10 +1,5 @@
-*.annot
-*.cmo
-*.cma
-*.cmi
-*.a
-*.o
-*.cmx
-*.cmxs
-*.cmxa
-*.out
+_build
+*.native
+*.byte
+*.d.native
+*.p.byte
