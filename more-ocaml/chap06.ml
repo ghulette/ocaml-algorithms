@@ -43,22 +43,28 @@ of data. If the length byte is 0-127, the following length+1 bytes are
 literal. If the length is 129-255, the following single byte shall be
 copied 257-length (2-128) times. Length of 128 denotes EOD. *)
 
-let encode l =
-  let rec encode_lits buf count acc = function
-    | (n,x)::xs when n = 1 -> encode_lits buf (count+1) (x::acc) xs
-    | l when count = 0 -> encode_run buf l
-    | l -> let len = char_of_int (count - 1) in
-           let buf' = buf @ (len::(List.rev acc)) in
-           encode_run buf' l
-  and encode_run buf = function
+let compress s =
+  let buf = Buffer.create 32 in
+  let rec encode_lits count acc = function
+    | (n,x)::xs when n = 1 -> encode_lits (count+1) (x::acc) xs
+    | l when count = 0 -> encode_run l
+    | l ->
+      let len = char_of_int (count - 1) in
+      Buffer.add_char buf len;
+      List.iter (fun c -> Buffer.add_char buf c) (List.rev acc);
+      encode_run l
+  and encode_run = function
     | (n,x)::xs when n > 1 ->
-       let len = char_of_int (257-n) in
-       let buf' = buf @ (len::[x]) in
-       encode_lits buf' 0 [] xs
-    | _::_ as l -> encode_lits buf 0 [] l 
-    | [] -> buf
+      let len = char_of_int (257-n) in
+      Buffer.add_char buf len;
+      Buffer.add_char buf x;
+      encode_lits 0 [] xs
+    | _::_ as l -> encode_lits 0 [] l
+    | [] -> ()
   in
-  (encode_run [] (rle 127 l)) @ [char_of_int 128]
+  explode s |> rle 127 |> encode_run;
+  Buffer.add_char buf '\128';
+  Buffer.contents buf
 
 let rec decode = function
   | ['\128'] -> []
@@ -72,9 +78,6 @@ let rec decode = function
      reps @ decode xs
   | [] -> failwith "expected EOD"
   | _ -> failwith "mangled data"
-
-let compress s =
-  explode s |> encode |> implode
 
 let expand s =
   explode s |> decode |> implode
