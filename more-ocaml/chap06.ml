@@ -1,20 +1,23 @@
 let rec take n l =
-  if n = 0 then [] else (List.hd l) :: take (n-1) (List.tl l)
+  let rec take_aux n acc = function
+  | [] -> List.rev acc
+  | x::xs when n > 0 -> take_aux (n-1) (x::acc) xs
+  | _ -> List.rev acc
+  in
+  take_aux n [] l
 
-let rec take_while p = function
-  | x::xs when p x -> x :: (take_while p xs)
-  | _ -> []
-
-let rec drop n l =
-  if n = 0 then l else drop (n-1) (List.tl l)
+let rec drop n = function
+  | [] -> []
+  | _::xs when n > 0 -> drop (n-1) xs
+  | l -> l
 
 let rec replicate n x =
   if n = 0 then [] else x :: replicate (n-1) x
 
 let implode l =
-  let b = Buffer.create (List.length l) in
-  List.iter (fun c -> Buffer.add_char b c) l;
-  Buffer.contents b
+  let buf = Buffer.create (List.length l) in
+  List.iter (Buffer.add_char buf) l;
+  Buffer.contents buf
 
 let explode s =
   let cs = ref [] in
@@ -51,7 +54,7 @@ let compress s =
     | l ->
       let len = char_of_int (count - 1) in
       Buffer.add_char buf len;
-      List.iter (fun c -> Buffer.add_char buf c) (List.rev acc);
+      List.iter (Buffer.add_char buf) (List.rev acc);
       encode_run l
   and encode_run = function
     | (n,x)::xs when n > 1 ->
@@ -66,18 +69,22 @@ let compress s =
   Buffer.add_char buf '\128';
   Buffer.contents buf
 
-let rec decode = function
-  | ['\128'] -> []
-  | x::xs when '\000' <= x && x <= '\127' ->
-     let len = (int_of_char x) + 1 in
-     let lits = take len xs in
-     lits @ decode (drop len xs)
-  | x::d::xs when '\129' <= x && x <= '\255' ->
-     let n = 257 - (int_of_char x) in
-     let reps = replicate n d in
-     reps @ decode xs
-  | [] -> failwith "expected EOD"
-  | _ -> failwith "mangled data"
-
 let expand s =
-  explode s |> decode |> implode
+  let buf = Buffer.create 32 in
+  let rec decode = function
+    | ['\128'] -> ()
+    | x::xs when '\000' <= x && x <= '\127' ->
+      let len = (int_of_char x) + 1 in
+      let lits = take len xs in
+      List.iter (Buffer.add_char buf) lits;
+      decode (drop len xs)
+    | x::d::xs when '\129' <= x && x <= '\255' ->
+      let n = 257 - (int_of_char x) in
+      let reps = replicate n d in
+      List.iter (Buffer.add_char buf) reps;
+      decode xs
+    | [] -> failwith "expected EOD"
+    | _ -> failwith "mangled data"
+  in
+  explode s |> decode;
+  Buffer.contents buf
