@@ -66,7 +66,8 @@ type output = {
 }
 
 let output_of_channel ch =
-  { output_char = (fun c -> output_byte ch (int_of_char c));
+  { (* output_char = (fun c -> output_byte ch (int_of_char c)); *)
+    output_char = (fun c -> int_of_char c |> output_byte ch);
     out_channel_length = (fun () -> out_channel_length ch)
   }
 
@@ -112,7 +113,7 @@ let input_string inp n =
 
 (* Q6 *)
 let output_of_buffer b =
-  { output_char = (fun c -> Buffer.add_char b c);
+  { output_char = Buffer.add_char b;
     out_channel_length = (fun () -> Buffer.length b)
   }
 

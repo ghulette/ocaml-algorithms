@@ -1,5 +1,3 @@
-open Chap04
-
 let int_of_bool b = if b then 1 else 0
 
 type input_bits = {
@@ -123,7 +121,6 @@ end
 module BitValue_Int32 = BitValue (Int32_BV)
 let get_int32_val = BitValue_Int32.get_val
 let put_int32_val = BitValue_Int32.put_val
-
 
 type tcp_header = {
   src_port : int;
