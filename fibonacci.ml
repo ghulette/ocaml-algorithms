@@ -2,11 +2,11 @@ open Printf
 open Big_int
 
 module type Nat = sig 
-    type t
-    val (+) : t -> t -> t
-    val of_int : int -> t
-    val to_string : t -> string
-  end
+  type t
+  val (+) : t -> t -> t
+  val of_int : int -> t
+  val to_string : t -> string
+end
 
 module IntNat : (Nat with type t = int) = struct
   type t = int
@@ -34,8 +34,7 @@ module Fibonacci (M : Nat) = struct
     !v
 end
 
-let _ =
-  let n = 5000 in
+let test n =
   let module F = Fibonacci (BigNat) in
   let open F in
   for i = 1 to n do
@@ -45,3 +44,7 @@ let _ =
     printf "%d: %s (%0.5f)\n" i (BigNat.to_string v) (t1-.t0);
     flush_all ()
   done
+
+let _ =
+  test 10
+
