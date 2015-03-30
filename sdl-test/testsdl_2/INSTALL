@@ -1,0 +1,15 @@
+Wow that was a learning experince. To build this thing you need to do
+the following.
+
+$ sudo apt-get install libsdl1.2-dev
+$ sudo apt-get install libsdl-image1.2-dev
+$ opam install conf-sdl-image
+$ opam install ocamlsdl
+
+The first opam install there may not be needed, not sure. Now you have
+to know how to link the library. The trick is that OPAM just uses findlib, so you need to use 
+
+$ ocamlfind list
+
+to figure out what the packages are actually called. Then you link
+them using PACKS for OCamlMakefile.
