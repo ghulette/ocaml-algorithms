@@ -1,69 +1,4 @@
-let int_of_bool b = if b then 1 else 0
-
-type input_bits = {
-  input : input;
-  mutable byte : int;
-  mutable bit : int
-}
-
-let input_bits_of_input input = 
-  { input; byte = 0; bit = 0 }
-
-let rec get_bit bits =
-  if bits.bit = 0 then
-    begin
-      bits.byte <- int_of_char (bits.input.input_char ());
-      bits.bit <- 1 lsl 7;
-      get_bit bits
-    end
-  else
-    let r = bits.byte land bits.bit > 0 in
-    bits.bit <- bits.bit lsr 1; r
-
-let align bits =
-  bits.bit <- 0
-
-let get_int_val bits n =
-  if n <= 0 || n > Sys.word_size-1 then invalid_arg "get_int_val";
-  let r = ref 0 in
-  for i = n-1 downto 0 do
-    let x = if get_bit bits then 1 else 0 in
-    r := !r lor (x lsl i)
-  done; !r
-
-type output_bits = {
-  output : output;
-  mutable obyte : int;
-  mutable obit : int
-}
-
-let output_bits_of_output output =
-  { output; obyte = 0; obit = 7 }
-
-let flush o =
-  if o.obit < 7 then o.output.output_char (char_of_int o.obyte);
-  o.obyte <- 0;
-  o.obit <- 7
-
-let rec put_bit o b =
-  if o.obit = (-1) then
-    begin
-      flush o; 
-      put_bit o b
-    end
-  else
-    begin
-      if b <> 0 then o.obyte <- o.obyte lor (1 lsl o.obit);
-      o.obit <- o.obit - 1
-    end
-
-let put_int_val o v l =
-  for i = l - 1 downto 0 do
-    put_bit o (v land (1 lsl i))
-  done
-
-let put_bool_val o b =
-  put_bit o (int_of_bool b)
+open Io
 
 module type BitVector =
   sig
@@ -102,25 +37,26 @@ module Int64_BV : BitVector with type t = Int64.t =
   end
 
 module BitValue (V : BitVector) = struct
-  let get_val bits n =
-    if n <= 0 || n > V.size then invalid_arg "get_val";
+  let read ib n =
+    if n <= 0 || n > V.size then invalid_arg "read";
     let r = ref V.zero in
     for i = n-1 downto 0 do
-      let x = if get_bit bits then V.one else V.zero in
+      let b = BitInput.read_bit ib in
+      let x = if b then V.one else V.zero in
       r := V.(!r lor (x lsl i))
     done;
     !r
 
-  let put_val o v l =
+  let write ob v l =
     for i = l - 1 downto 0 do
       let b = V.(v land (one lsl i)) in
-      put_bool_val o (b <> V.zero)
+      BitOutput.write_bool ob (b <> V.zero)
     done
 end
 
 module BitValue_Int32 = BitValue (Int32_BV)
-let get_int32_val = BitValue_Int32.get_val
-let put_int32_val = BitValue_Int32.put_val
+let read_int32 = BitValue_Int32.read
+let write_int32 = BitValue_Int32.write
 
 type tcp_header = {
   src_port : int;
@@ -141,46 +77,46 @@ type tcp_header = {
 }
 
 let decode s =
-  let inp = input_of_string s in
-  let b = input_bits_of_input inp in
-  let src_port = get_int_val b 16 in
-  let dst_port = get_int_val b 16 in
-  let sequence = get_int32_val b 32 in
-  let ack = get_int32_val b 32 in
-  let offset = get_int_val b 4 in
-  let reserved = get_int_val b 6 in
-  let flag_urgent = get_bit b in
-  let flag_ack = get_bit b in
-  let flag_push = get_bit b in
-  let flag_reset = get_bit b in
-  let flag_syn = get_bit b in
-  let flag_fin = get_bit b in
-  let recv_win_size = get_int_val b 16 in
-  let checksum = get_int_val b 16 in
-  let urgent_ptr = get_int_val b 16 in
+  let b = BitInput.of_input (Input.of_string s) in
+  let open BitInput in
+  let src_port = read_int b 16 in
+  let dst_port = read_int b 16 in
+  let sequence = read_int32 b 32 in
+  let ack = read_int32 b 32 in
+  let offset = read_int b 4 in
+  let reserved = read_int b 6 in
+  let flag_urgent = read_bit b in
+  let flag_ack = read_bit b in
+  let flag_push = read_bit b in
+  let flag_reset = read_bit b in
+  let flag_syn = read_bit b in
+  let flag_fin = read_bit b in
+  let recv_win_size = read_int b 16 in
+  let checksum = read_int b 16 in
+  let urgent_ptr = read_int b 16 in
   { src_port; dst_port; sequence; ack; offset; reserved;
     flag_urgent; flag_ack; flag_push; flag_reset; flag_syn; flag_fin;
     recv_win_size; checksum; urgent_ptr }
 
 let encode h =
   let buf = Buffer.create 20 in
-  let out = output_of_buffer buf in
-  let b = output_bits_of_output out in
-  put_int_val b h.src_port 16;
-  put_int_val b h.dst_port 16;
-  put_int32_val b h.sequence 32;
-  put_int32_val b h.ack 32;
-  put_int_val b h.offset 4;
-  put_int_val b h.reserved 6;
-  put_bool_val b h.flag_urgent;
-  put_bool_val b h.flag_ack;
-  put_bool_val b h.flag_push;
-  put_bool_val b h.flag_reset;
-  put_bool_val b h.flag_syn;
-  put_bool_val b h.flag_fin;
-  put_int_val b h.recv_win_size 16;
-  put_int_val b h.checksum 16;
-  put_int_val b h.urgent_ptr 16;
+  let b = BitOutput.of_output (Output.of_buffer buf) in
+  let open BitOutput in
+  write_int b h.src_port 16;
+  write_int b h.dst_port 16;
+  write_int32 b h.sequence 32;
+  write_int32 b h.ack 32;
+  write_int b h.offset 4;
+  write_int b h.reserved 6;
+  write_bool b h.flag_urgent;
+  write_bool b h.flag_ack;
+  write_bool b h.flag_push;
+  write_bool b h.flag_reset;
+  write_bool b h.flag_syn;
+  write_bool b h.flag_fin;
+  write_int b h.recv_win_size 16;
+  write_int b h.checksum 16;
+  write_int b h.urgent_ptr 16;
   flush b;
   Buffer.contents buf
 
@@ -208,8 +144,9 @@ let print_hex_string s =
   done;
   printf "\"\n"
 
-let tcp_datagram = "\x00\x26\xbb\x14\x62\xb7\xcc\x33\x58\x55\
-                    \x1e\xed\x08\x00\x45\x00\x03\x78\xf7\xac"
+let tcp_datagram = 
+  "\x00\x26\xbb\x14\x62\xb7\xcc\x33\x58\x55\
+   \x1e\xed\x08\x00\x45\x00\x03\x78\xf7\xac"
 
 let _ =
   let open Printf in
