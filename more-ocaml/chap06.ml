@@ -137,7 +137,8 @@ let print_packed w s =
   try
     while true do
       for col = 1 to w do
-        print_int (BitInput.read_bit i |> fun b -> if b then 1 else 0)
+        let b = BitInput.read_bool i in
+        print_int (if b then 1 else 0)
       done;
       print_newline ()
     done

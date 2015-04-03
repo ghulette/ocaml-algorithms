@@ -88,15 +88,18 @@ module BitInput = struct
         read_bit ib
       end
     else
-      let r = ib.byte land ib.bit > 0 in
+      let r = ib.byte land ib.bit in
       ib.bit <- ib.bit lsr 1;
       r
+
+  let read_bool ib =
+    read_bit ib > 0
 
   let read_int ib n =
     if n <= 0 || n > Sys.word_size-1 then invalid_arg "get_int_val";
     let r = ref 0 in
     for i = n-1 downto 0 do
-      let x = if read_bit ib then 1 else 0 in
+      let x = if read_bool ib then 1 else 0 in
       r := !r lor (x lsl i)
     done;
     !r
@@ -105,7 +108,6 @@ end
 
 
 module BitOutput = struct
-
   type t = {
     output : Output.t;
     mutable byte : int;
@@ -132,12 +134,12 @@ module BitOutput = struct
         ob.bit <- ob.bit - 1
       end
 
+  let write_bool ob b =
+    write_bit ob (if b then 1 else 0)
+
   let write_int ob v l =
     for i = l - 1 downto 0 do
       write_bit ob (v land (1 lsl i))
     done
-
-  let write_bool ob b =
-    write_bit ob (if b then 1 else 0)
 
 end

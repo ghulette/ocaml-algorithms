@@ -29,7 +29,7 @@ module BitInput : sig
   type t
   val of_input : Input.t -> t
   val align : t -> unit
-  val read_bit : t -> bool
+  val read_bool : t -> bool
   val read_int : t -> int -> int
 end
 
@@ -37,7 +37,6 @@ module BitOutput : sig
   type t
   val of_output : Output.t -> t
   val flush : t -> unit
-  val write_bit : t -> int -> unit
   val write_bool : t -> bool -> unit
   val write_int : t -> int -> int -> unit
 end
