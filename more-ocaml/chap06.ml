@@ -101,6 +101,7 @@ let _ =
 
 module Bitmap = struct
   let width = 80
+  let height = 21
 
   let data =
     "00000000000000000000000000000000000000000000000000000000000000000000000000000000\
@@ -469,11 +470,36 @@ let _ =
   let open Printf in
   let src = pack Bitmap.data in
   print_packed src Bitmap.width;
-  let enc = compress_ccitt src 80 21 in
+  let enc = compress_ccitt src Bitmap.width Bitmap.height in
   let olen = String.length src |> float_of_int in
   let elen = String.length enc |> float_of_int in
   let perc = elen /. olen *. 100.0 in
   printf "Compressed to %0.2f%% of original size\n" perc;
-  let dec = decompress_ccitt enc 80 21 in
-  print_packed dec 80;
+  let dec = decompress_ccitt enc Bitmap.width Bitmap.height in
+  print_packed dec Bitmap.width;
   if src = dec then printf "Ok\n" else failwith "Compression error!"
+
+
+(* Q3 *)
+let _ =
+  let open Printf in
+  let src = pack Bitmap.data in
+
+  (* Encoding one line does slightly better *)
+  let enc = compress_ccitt src 1680 1 in
+  let olen = String.length src |> float_of_int in
+  let elen = String.length enc |> float_of_int in
+  let perc = elen /. olen *. 100.0 in
+  printf "One line: %0.2f%% of original size\n" perc;
+
+  (* Re-encoding data blows up the size *)
+  let w = String.length enc * 8 in
+  let enc2 = compress_ccitt enc w 1 in
+  let e2len = String.length enc2 |> float_of_int in
+  let perc2 = e2len /. elen *. 100.0 in
+  printf "Re-encode: %0.2f%% of original size\n" perc2
+
+
+(* Q4 *)
+
+  
