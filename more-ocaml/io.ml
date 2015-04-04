@@ -80,6 +80,16 @@ module BitInput = struct
   let align ib =
     ib.bit <- 0
 
+  let peek ib =
+    if ib.bit = 0 then
+      begin
+        let byte = Input.read_char ib.input |> int_of_char in
+        Input.rewind ib.input;
+        byte land 128 > 0
+      end
+    else
+      ib.byte land ib.bit > 0
+
   let rec read_bit ib =
     if ib.bit = 0 then
       begin

@@ -1,5 +1,8 @@
 open Io
 
+let bit_of_bool b =
+  if b then 1 else 0
+
 let string_of_int_list l =
   let bs = Bytes.create (List.length l) in
   List.iteri (Bytes.set bs) (List.map char_of_int l);
@@ -132,7 +135,7 @@ let pack s =
   BitOutput.flush o;
   Buffer.contents b
 
-let print_packed w s =
+let print_packed s w =
   let i = BitInput.of_input (Input.of_string s) in
   try
     while true do
@@ -145,5 +148,332 @@ let print_packed w s =
   with
     End_of_file -> ()
 
+let white_terminating_codes =
+  [|[0; 0; 1; 1; 0; 1; 0; 1]; 
+    [0; 0; 0; 1; 1; 1];
+    [0; 1; 1; 1];
+    [1; 0; 0; 0];
+    [1; 0; 1; 1];
+    [1; 1; 0; 0];
+    [1; 1; 1; 0];
+    [1; 1; 1; 1];
+    [1; 0; 0; 1; 1];
+    [1; 0; 1; 0; 0];
+    [0; 0; 1; 1; 1];
+    [0; 1; 0; 0; 0];
+    [0; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 1; 1];
+    [1; 1; 0; 1; 0; 0];
+    [1; 1; 0; 1; 0; 1];
+    [1; 0; 1; 0; 1; 0];
+    [1; 0; 1; 0; 1; 1];
+    [0; 1; 0; 0; 1; 1; 1];
+    [0; 0; 0; 1; 1; 0; 0];
+    [0; 0; 0; 1; 0; 0; 0];
+    [0; 0; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 1; 1];
+    [0; 0; 0; 0; 1; 0; 0];
+    [0; 1; 0; 1; 0; 0; 0];
+    [0; 1; 0; 1; 0; 1; 1];
+    [0; 0; 1; 0; 0; 1; 1];
+    [0; 1; 0; 0; 1; 0; 0];
+    [0; 0; 1; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1];
+    [0; 0; 0; 1; 1; 0; 1; 0];
+    [0; 0; 0; 1; 1; 0; 1; 1];
+    [0; 0; 0; 1; 0; 0; 1; 0];
+    [0; 0; 0; 1; 0; 0; 1; 1];
+    [0; 0; 0; 1; 0; 1; 0; 0];
+    [0; 0; 0; 1; 0; 1; 0; 1];
+    [0; 0; 0; 1; 0; 1; 1; 0];
+    [0; 0; 0; 1; 0; 1; 1; 1];
+    [0; 0; 1; 0; 1; 0; 0; 0];
+    [0; 0; 1; 0; 1; 0; 0; 1];
+    [0; 0; 1; 0; 1; 0; 1; 0];
+    [0; 0; 1; 0; 1; 0; 1; 1];
+    [0; 0; 1; 0; 1; 1; 0; 0];
+    [0; 0; 1; 0; 1; 1; 0; 1];
+    [0; 0; 0; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1];
+    [0; 0; 0; 0; 1; 0; 1; 0];
+    [0; 0; 0; 0; 1; 0; 1; 1];
+    [0; 1; 0; 1; 0; 0; 1; 0];
+    [0; 1; 0; 1; 0; 0; 1; 1];
+    [0; 1; 0; 1; 0; 1; 0; 0];
+    [0; 1; 0; 1; 0; 1; 0; 1];
+    [0; 0; 1; 0; 0; 1; 0; 0];
+    [0; 0; 1; 0; 0; 1; 0; 1];
+    [0; 1; 0; 1; 1; 0; 0; 0];
+    [0; 1; 0; 1; 1; 0; 0; 1];
+    [0; 1; 0; 1; 1; 0; 1; 0];
+    [0; 1; 0; 1; 1; 0; 1; 1];
+    [0; 1; 0; 0; 1; 0; 1; 0];
+    [0; 1; 0; 0; 1; 0; 1; 1];
+    [0; 0; 1; 1; 0; 0; 1; 0];
+    [0; 0; 1; 1; 0; 0; 1; 1];
+    [0; 0; 1; 1; 0; 1; 0; 0]|]
+
+let black_terminating_codes =
+  [|[0; 0; 0; 1; 1; 0; 1; 1; 1];
+    [0; 1; 0];
+    [1; 1];
+    [1; 0];
+    [0; 1; 1];
+    [0; 0; 1; 1];
+    [0; 0; 1; 0];
+    [0; 0; 0; 1; 1];
+    [0; 0; 0; 1; 0; 1];
+    [0; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 1; 0; 1];
+    [0; 0; 0; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 1; 1];
+    [0; 0; 0; 0; 1; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 1; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 1; 1];
+    [0; 0; 0; 0; 1; 1; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 0; 0];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 1; 0];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 1; 1];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 1; 0; 0];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 1; 0; 1];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 0; 0; 1];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 0; 1; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 0; 1; 1];
+    [0; 0; 0; 0; 1; 1; 0; 1; 0; 0; 1; 0];
+    [0; 0; 0; 0; 1; 1; 0; 1; 0; 0; 1; 1];
+    [0; 0; 0; 0; 1; 1; 0; 1; 0; 1; 0; 1];
+    [0; 0; 0; 0; 1; 1; 0; 1; 0; 1; 1; 0];
+    [0; 0; 0; 0; 1; 1; 0; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 1];
+    [0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 1; 0];
+    [0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 1; 1];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 0; 1];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 1; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 1];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 0; 1; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 0; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 0; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 0; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 0];
+    [0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 1; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 1; 0];
+    [0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 1; 1]|]
+
+let white_make_up_codes =
+  [|[1; 1; 0; 1; 1];
+    [1; 0; 0; 1; 0];
+    [0; 1; 0; 1; 1; 1];
+    [0; 1; 1; 0; 1; 1; 1];
+    [0; 0; 1; 1; 0; 1; 1; 0];
+    [0; 0; 1; 1; 0; 1; 1; 1];
+    [0; 1; 1; 0; 0; 1; 0; 0];
+    [0; 1; 1; 0; 0; 1; 0; 1];
+    [0; 1; 1; 0; 1; 0; 0; 0];
+    [0; 1; 1; 0; 0; 1; 1; 1];
+    [0; 1; 1; 0; 0; 1; 1; 0; 0];
+    [0; 1; 1; 0; 0; 1; 1; 0; 1];
+    [0; 1; 1; 0; 1; 0; 0; 1; 0];
+    [0; 1; 1; 0; 1; 0; 0; 1; 1];
+    [0; 1; 1; 0; 1; 0; 1; 0; 0];
+    [0; 1; 1; 0; 1; 0; 1; 0; 1];
+    [0; 1; 1; 0; 1; 0; 1; 1; 0];
+    [0; 1; 1; 0; 1; 0; 1; 1; 1];
+    [0; 1; 1; 0; 1; 1; 0; 0; 0];
+    [0; 1; 1; 0; 1; 1; 0; 0; 1];
+    [0; 1; 1; 0; 1; 1; 0; 1; 0];
+    [0; 1; 1; 0; 1; 1; 0; 1; 1];
+    [0; 1; 0; 0; 1; 1; 0; 0; 0];
+    [0; 1; 0; 0; 1; 1; 0; 0; 1];
+    [0; 1; 1; 0; 0; 0];
+    [0; 1; 0; 0; 1; 1; 0; 1; 1]|]
+
+let black_make_up_codes =
+  [|[0; 0; 0; 0; 0; 0; 1; 1; 1; 1];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 0; 0];
+    [0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 0; 1];
+    [0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 1; 0; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 1; 1; 0; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 1; 0; 1; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 1; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 1; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 0; 1; 1; 0; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 0; 1; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 1; 0; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 1; 1; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 1; 0; 1; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 0; 1; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 1; 0; 1];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 1; 0];
+    [0; 0; 0; 0; 0; 0; 1; 0; 1; 1; 0; 1; 1];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 0];
+    [0; 0; 0; 0; 0; 0; 1; 1; 0; 0; 1; 0; 1]|]
+
+let rec code is_black len =
+  if len > 1791 || len < 0 then invalid_arg "code";
+  if len > 64 then
+    let m = 
+      if is_black
+      then black_make_up_codes.(len / 64 - 1)
+      else white_make_up_codes.(len / 64 - 1)
+    in m @ code is_black (len mod 64)
+  else
+    if is_black
+    then black_terminating_codes.(len)
+    else white_terminating_codes.(len)
+                                            
+let rec read_up_to color ib n w =
+  if n >= w then (n, color) else
+    let next = BitInput.peek ib in
+    if next = color then
+      begin
+        BitInput.read_bool ib |> ignore;
+        read_up_to color ib (n+1) w
+      end
+    else
+      (n, color)
+
+let encode_fax ib ob w h =
+  let open BitInput in
+  let open BitOutput in
+  let rec encode_fax_line w =
+    if w > 0 then
+      let color = peek ib in
+      let n, is_black = read_up_to color ib 0 w in
+      List.iter (write_bit ob) (code color n);
+      encode_fax_line (w - n)
+  in
+  for x = 1 to h do
+    if peek ib then List.iter (write_bit ob) (code true 0);
+    encode_fax_line w
+  done
+
+let process_bits f s w h =
+  let buf = Buffer.create (String.length s) in
+  let ib = BitInput.of_input (Input.of_string s) in
+  let ob = BitOutput.of_output (Output.of_buffer buf) in
+  f ib ob w h;
+  BitOutput.flush ob;
+  Buffer.contents buf
+
+let compress_ccitt = 
+  process_bits encode_fax
+
+module Prefix = struct
+  type 'a t =
+    | Leaf of 'a option
+    | Node of ('a t * 'a t)
+
+  let empty =
+    Leaf None
+
+  let rec insert k v t =
+    match k, t with
+    | [], _ -> Leaf (Some v)
+    | 0::bs, Node (lt, rt) -> Node (insert bs v lt, rt)
+    | 0::bs, Leaf _ -> Node (insert bs v empty, empty)
+    | 1::bs, Node (lt, rt) -> Node (lt, insert bs v rt)
+    | 1::bs, Leaf _ -> Node (empty, insert bs v empty)
+    | _ -> invalid_arg "insert"
+
+  let rec lookup k t =
+    match k, t with
+    | [], Leaf x -> x
+    | 0::bs, Node (lt,_) -> lookup bs lt
+    | 1::bs, Node (_,rt) -> lookup bs rt
+    | _ -> None
+
+  let lookup_step b = function
+    | Node (lt,rt) -> if b = 0 then lt else rt
+    | _ -> failwith "lookup_step"
+
+  let of_array a =
+    let t = ref empty in
+    Array.iteri (fun v k -> t := insert k v !t) a;
+    !t
+
+end
+
+let make_code_tree terminating make_up =
+  let t = ref Prefix.empty in
+  Array.iteri (fun v k -> t := Prefix.insert k v !t) terminating;
+  Array.iteri (fun v k -> t := Prefix.insert k ((v+1)*64) !t) make_up;
+  !t
+
+let white_prefix =
+  make_code_tree white_terminating_codes white_make_up_codes
+
+let black_prefix = 
+  make_code_tree black_terminating_codes black_make_up_codes
+
+let rec read_code pf t ib =
+  let open Prefix in
+  let b = BitInput.read_bool ib |> bit_of_bool in
+  match lookup_step b t with
+  | Leaf (Some x) -> if x < 64 then x else x + read_code pf pf ib
+  | t' -> read_code pf t' ib
+
+let read_code is_black =
+  let pf = if is_black then black_prefix else white_prefix in
+  read_code pf pf
+
+let decode_fax ib ob w h =
+  let lines = ref h in
+  let pixels = ref w in
+  let is_black = ref false in
+  while !lines > 0 do
+    while !pixels > 0 do
+      let n = read_code !is_black ib in
+      for x = 1 to n do
+        BitOutput.write_bool ob !is_black
+      done;
+      pixels := !pixels - n;
+      is_black := not !is_black
+    done;
+    is_black := false;
+    pixels := w;
+    lines := !lines - 1;
+  done
+
+let decompress_ccitt =
+  process_bits decode_fax
+
 let _ =
-  pack Bitmap.data |> print_packed Bitmap.width
+  let open Printf in
+  let src = pack Bitmap.data in
+  print_packed src Bitmap.width;
+  let enc = compress_ccitt src 80 21 in
+  let olen = String.length src |> float_of_int in
+  let elen = String.length enc |> float_of_int in
+  let perc = elen /. olen *. 100.0 in
+  printf "Compressed to %0.2f%% of original size\n" perc;
+  let dec = decompress_ccitt enc 80 21 in
+  print_packed dec 80;
+  if src = dec then printf "Ok\n" else failwith "Compression error!"
