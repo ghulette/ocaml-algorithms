@@ -349,17 +349,20 @@ let rec code is_black len =
     if is_black
     then black_terminating_codes.(len)
     else white_terminating_codes.(len)
-                                            
-let rec read_up_to color ib n w =
-  if n >= w then (n, color) else
-    let next = BitInput.peek ib in
-    if next = color then
-      begin
-        BitInput.read_bool ib |> ignore;
-        read_up_to color ib (n+1) w
-      end
-    else
-      (n, color)
+
+let read_up_to color ib w =
+  let rec aux n =
+    if n >= w then (n, color) else
+      let next = BitInput.peek ib in
+      if next = color then
+        begin
+          BitInput.read_bool ib |> ignore;
+          aux (n+1)
+        end
+      else
+        (n, color)
+  in
+  aux 0
 
 let encode_fax ib ob w h =
   let open BitInput in
@@ -367,7 +370,7 @@ let encode_fax ib ob w h =
   let rec encode_fax_line w =
     if w > 0 then
       let color = peek ib in
-      let n, is_black = read_up_to color ib 0 w in
+      let n, is_black = read_up_to color ib w in
       List.iter (write_bit ob) (code color n);
       encode_fax_line (w - n)
   in
@@ -501,5 +504,4 @@ let _ =
 
 
 (* Q4 *)
-
   
