@@ -519,12 +519,27 @@ let bit_runs ib =
   let start_color = BitInput.peek ib in
   aux start_color 0 []
 
+let histogram l =
+  let module M = Map.Make (struct type t = int let compare = compare end) in
+  let record k m =
+    if M.mem k m
+    then let n = M.find k m in M.add k (n+1) m
+    else M.add k 1 m
+  in
+  List.fold_left (fun a x -> record x a) M.empty l |> M.bindings
+
+let bitstogram ib =
+  let bruns, wruns = bit_runs ib |> List.partition fst in
+  (bruns |> List.map snd |> histogram, wruns |> List.map snd |> histogram)
+
 let _ =
   let open Printf in
   let data = Bitmap.data |> pack in
   let ib = BitInput.of_input (Input.of_string data) in
-  let runs = bit_runs ib in
-  let white_runs = List.filter (fun p -> fst p |> not) runs |> List.map snd in
-  let black_runs = List.filter fst runs |> List.map snd in
-  let module M = Map.Make (struct type t = int let compare = compare end) in
-  ()
+  let bh, wh = bitstogram ib in
+  printf "Black histogram\n";
+  List.iter (fun (k, v) -> printf "%d,%d " k v) bh;
+  printf "\n";
+  printf "White histogram\n";
+  List.iter (fun (k, v) -> printf "%d,%d " k v) wh;
+  printf "\n"
