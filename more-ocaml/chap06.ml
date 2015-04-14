@@ -537,9 +537,10 @@ let _ =
   let data = Bitmap.data |> pack in
   let ib = BitInput.of_input (Input.of_string data) in
   let bh, wh = bitstogram ib in
-  printf "Black histogram\n";
+  printf "Histograms\n";
+  printf "Black: ";
   List.iter (fun (k, v) -> printf "%d,%d " k v) bh;
   printf "\n";
-  printf "White histogram\n";
+  printf "White: ";
   List.iter (fun (k, v) -> printf "%d,%d " k v) wh;
   printf "\n"
