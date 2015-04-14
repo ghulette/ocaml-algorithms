@@ -504,4 +504,27 @@ let _ =
 
 
 (* Q4 *)
-  
+let bit_runs ib =
+  let rec aux color n acc =
+    try
+      let next = BitInput.read_bool ib in
+      if next = color then
+        aux color (n+1) acc
+      else
+        let run = (color, n) in
+        aux (not color) 1 (run::acc)
+    with
+      End_of_file -> acc
+  in
+  let start_color = BitInput.peek ib in
+  aux start_color 0 []
+
+let _ =
+  let open Printf in
+  let data = Bitmap.data |> pack in
+  let ib = BitInput.of_input (Input.of_string data) in
+  let runs = bit_runs ib in
+  let white_runs = List.filter (fun p -> fst p |> not) runs |> List.map snd in
+  let black_runs = List.filter fst runs |> List.map snd in
+  let module M = Map.Make (struct type t = int let compare = compare end) in
+  ()
