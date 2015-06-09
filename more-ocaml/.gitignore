@@ -1,6 +1,7 @@
 more-ocaml
 ._d/
 ._ncdi/
+._bcdi/
 *.cmi
 *.cmo
 *.cmx
